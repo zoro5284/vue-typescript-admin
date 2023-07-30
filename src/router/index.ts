@@ -1,25 +1,28 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { beforeEach, afterEach } from './config'
 
-const routes: Array<RouteRecordRaw> = [
-  {
-    path: '/',
-    name: 'home',
-    component: HomeView
-  },
-  {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
-  }
-]
+const files = require.context('./modules', true, /.ts$/)
+const routes: Array<RouteRecordRaw> = files.keys().reduce((routes: Array<RouteRecordRaw>, key: string) => {
+  if (key === './base.ts' || key === './index.ts') return routes.concat(files(key).default)
+  const reg = /\.\/([^\s]+)\.ts$/
+  const route = files(key).default.map((routeItem: RouteRecordRaw) => {
+    if (!key.match(reg)) return []
+    const prefix = key.match(reg)
+
+    return {
+      ...routeItem,
+      path: `/${prefix && prefix[1]}${routeItem.path}`
+    }
+  })
+  return route.concat(routes)
+}, [])
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
 })
 
+console.log('router', routes)
+router.beforeEach(beforeEach)
+router.afterEach(afterEach)
 export default router
